@@ -23,11 +23,6 @@ jobs:
         python-version: '3.12'
 
     # 🔹 Cache dependencies (updated version)
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
 
     # 🔹 Install dependencies + measure time
     - name: Install Dependencies
