@@ -23,10 +23,8 @@ jobs:
     - name: Install Dependencies
       run: |
         START=$(date +%s)
-
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
         END=$(date +%s)
         echo "INSTALL_TIME=$((END-START))" >> $GITHUB_ENV
 
@@ -36,9 +34,7 @@ jobs:
     - name: Run Tests
       run: |
         START=$(date +%s)
-
         python manage.py test calculator
-
         END=$(date +%s)
         echo "TEST_TIME=$((END-START))" >> $GITHUB_ENV
 
@@ -62,28 +58,9 @@ jobs:
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          set +e   # 🔥 IMPORTANT: prevents script failure on signals
-
           cd ClacCode
           git pull origin main
           source venv/bin/activate
           pip install -r requirements.txt
           python manage.py migrate
-
-          echo "Checking for existing server..."
-          PIDS=$(pgrep -f runserver)
-
-          if [ ! -z "$PIDS" ]; then
-            echo "Stopping old server..."
-            kill $PIDS
-            sleep 2
-          else
-            echo "No existing server running"
-          fi
-
-          echo "Starting new server..."
-          nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
-
-          echo "Deployment + Restart completed"
-
-          exit 0   # 🔥 FORCE SUCCESS
+          echo "Deployment completed successfully"
