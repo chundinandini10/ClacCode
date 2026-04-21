@@ -60,7 +60,7 @@ jobs:
         echo "Status: SUCCESS" >> metrics.txt
 
     - name: Upload Metrics
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: metrics
         path: metrics.txt
