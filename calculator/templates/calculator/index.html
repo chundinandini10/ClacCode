@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Calculator API GUI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-primary: #38bdf8;
+            --accent-secondary: #818cf8;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --button-hover: rgba(56, 189, 248, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top left, #1e293b, #0f172a);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .calculator-container {
+            width: 380px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .display {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            text-align: right;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .display-expression {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            height: 1.2rem;
+            overflow: hidden;
+        }
+
+        .display-result {
+            font-size: 2.2rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            white-space: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .display-result::-webkit-scrollbar { display: none; }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        button {
+            border: none;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            height: 60px;
+            border-radius: 14px;
+            font-size: 1.2rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button:hover {
+            background: var(--button-hover);
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.operator {
+            color: var(--accent-primary);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        button.action {
+            color: var(--accent-secondary);
+            background: rgba(129, 140, 248, 0.1);
+        }
+
+        button.equals {
+            grid-column: span 2;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: #fff;
+            font-weight: 700;
+        }
+
+        button.equals:hover {
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .error-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ef4444;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            display: none;
+            animation: slideUp 0.3s ease-out;
+            z-index: 100;
+        }
+
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100%); }
+            to { transform: translate(-50%, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calculator-container">
+        <div class="header">
+            <h1>CalcAPI GUI</h1>
+            <p>Powered by Django Rest Framework</p>
+        </div>
+
+        <div class="display">
+            <div class="display-expression" id="expression"></div>
+            <div class="display-result" id="result">0</div>
+        </div>
+
+        <div class="keypad">
+            <button class="action" onclick="clearDisplay()">AC</button>
+            <button class="action" onclick="deleteLast()">DEL</button>
+            <button class="operator" onclick="appendOp('sqrt')">√</button>
+            <button class="operator" onclick="appendOp('divide')">÷</button>
+            
+            <button onclick="appendNum(7)">7</button>
+            <button onclick="appendNum(8)">8</button>
+            <button onclick="appendNum(9)">9</button>
+            <button class="operator" onclick="appendOp('multiply')">×</button>
+            
+            <button onclick="appendNum(4)">4</button>
+            <button onclick="appendNum(5)">5</button>
+            <button onclick="appendNum(6)">6</button>
+            <button class="operator" onclick="appendOp('subtract')">−</button>
+            
+            <button onclick="appendNum(1)">1</button>
+            <button onclick="appendNum(2)">2</button>
+            <button onclick="appendNum(3)">3</button>
+            <button class="operator" onclick="appendOp('add')">+</button>
+            
+            <button onclick="appendNum(0)">0</button>
+            <button onclick="appendNum('.')">.</button>
+            <button class="operator" onclick="appendOp('power')">^</button>
+            <button class="equals" onclick="calculate()">=</button>
+        </div>
+    </div>
+
+    <div id="error-toast" class="error-toast"></div>
+
+    <script>
+        let currentInput = '';
+        let currentOp = '';
+        let previousInput = '';
+
+        const resultEl = document.getElementById('result');
+        const exprEl = document.getElementById('expression');
+        const toast = document.getElementById('error-toast');
+
+        function updateDisplay() {
+            resultEl.innerText = currentInput || '0';
+            if (currentOp) {
+                const opSymbols = {
+                    add: '+',
+                    subtract: '-',
+                    multiply: '×',
+                    divide: '÷',
+                    power: '^',
+                    sqrt: '√'
+                };
+                exprEl.innerText = `${previousInput} ${opSymbols[currentOp] || currentOp}`;
+            } else {
+                exprEl.innerText = '';
+            }
+        }
+
+        function appendNum(num) {
+            if (num === '.' && currentInput.includes('.')) return;
+            currentInput += num;
+            updateDisplay();
+        }
+
+        function appendOp(op) {
+            if (op === 'sqrt') {
+                if (currentInput) {
+                    performCalculation('sqrt', parseFloat(currentInput));
+                }
+                return;
+            }
+
+            if (currentInput === '') return;
+            if (previousInput !== '') {
+                calculate();
+            }
+            currentOp = op;
+            previousInput = currentInput;
+            currentInput = '';
+            updateDisplay();
+        }
+
+        function clearDisplay() {
+            currentInput = '';
+            currentOp = '';
+            previousInput = '';
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            currentInput = currentInput.slice(0, -1);
+            updateDisplay();
+        }
+
+        function showError(msg) {
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        async function calculate() {
+            if (!currentOp || !previousInput || !currentInput) return;
+            
+            const a = parseFloat(previousInput);
+            const b = parseFloat(currentInput);
+            
+            await performCalculation(currentOp, a, b);
+        }
+
+        async function performCalculation(op, a, b = null) {
+            const payload = {
+                operation: op,
+                a: a
+            };
+            if (b !== null) payload.b = b;
+
+            try {
+                const response = await fetch('/api/calculate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentInput = data.result.toString();
+                    currentOp = '';
+                    previousInput = '';
+                    updateDisplay();
+                } else {
+                    showError(data.error || 'Calculation Error');
+                }
+            } catch (err) {
+                showError('Server connection failed');
+            }
+        }
+    </script>
+</body>
+</html>
