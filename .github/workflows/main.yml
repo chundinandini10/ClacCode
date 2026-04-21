@@ -62,7 +62,7 @@ jobs:
         name: metrics
         path: metrics.txt
 
-    # 🚀 DEPLOY + CLEAN RESTART ON EC2
+    # 🚀 DEPLOY + SAFE RESTART ON EC2 (NO 143 ERROR)
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -76,8 +76,15 @@ jobs:
           pip install -r requirements.txt
           python manage.py migrate
 
-          echo "Stopping old server..."
-          pkill -f runserver > /dev/null 2>&1 || true
+          echo "Checking for existing server..."
+          PIDS=$(pgrep -f runserver)
+
+          if [ ! -z "$PIDS" ]; then
+            echo "Stopping old server..."
+            kill $PIDS
+          else
+            echo "No existing server running"
+          fi
 
           echo "Starting new server..."
           nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
