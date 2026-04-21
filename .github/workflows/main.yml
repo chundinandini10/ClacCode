@@ -1,0 +1,82 @@
+name: Fully Automated CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+  schedule:
+    - cron: "*/30 * * * *"   # runs every 30 minutes (for experiments)
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    #  Cache dependencies
+    - name: Cache pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+
+    # 🔥 Measure install time
+    - name: Install Dependencies
+      run: |
+        START=$(date +%s)
+
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+        END=$(date +%s)
+        echo "INSTALL_TIME=$((END-START))" >> $GITHUB_ENV
+
+    - name: Run Migrations
+      run: python manage.py migrate
+
+    # 🔥 Measure test time
+    - name: Run Tests
+      run: |
+        START=$(date +%s)
+
+        python manage.py test calculator
+
+        END=$(date +%s)
+        echo "TEST_TIME=$((END-START))" >> $GITHUB_ENV
+
+    # 🔥 Save metrics automatically
+    - name: Save Metrics
+      run: |
+        echo "Run Time: $(date)" > metrics.txt
+        echo "Install Time: $INSTALL_TIME sec" >> metrics.txt
+        echo "Test Time: $TEST_TIME sec" >> metrics.txt
+        echo "Status: SUCCESS" >> metrics.txt
+
+    - name: Upload Metrics
+      uses: actions/upload-artifact@v3
+      with:
+        name: metrics
+        path: metrics.txt
+
+    # 🚀 AUTO DEPLOY TO EC2
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd ClacCode
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt
+          python manage.py migrate
+          sudo pkill -f runserver || true
+          nohup python manage.py runserver 0.0.0.0:8000 &
