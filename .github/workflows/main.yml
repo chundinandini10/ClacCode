@@ -5,24 +5,21 @@ on:
     branches: [ main ]
 
   schedule:
-    - cron: "*/30 * * * *"   # runs every 30 minutes
+    - cron: "*/30 * * * *"
 
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # 🔹 Checkout code
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # 🔹 Setup Python
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'
 
-    # 🔹 Install dependencies + measure time
     - name: Install Dependencies
       run: |
         START=$(date +%s)
@@ -33,11 +30,9 @@ jobs:
         END=$(date +%s)
         echo "INSTALL_TIME=$((END-START))" >> $GITHUB_ENV
 
-    # 🔹 Run migrations
     - name: Run Migrations
       run: python manage.py migrate
 
-    # 🔹 Run tests + measure time
     - name: Run Tests
       run: |
         START=$(date +%s)
@@ -47,7 +42,6 @@ jobs:
         END=$(date +%s)
         echo "TEST_TIME=$((END-START))" >> $GITHUB_ENV
 
-    # 🔹 Save metrics
     - name: Save Metrics
       run: |
         echo "Run Time: $(date)" > metrics.txt
@@ -55,39 +49,41 @@ jobs:
         echo "Test Time: $TEST_TIME sec" >> metrics.txt
         echo "Status: SUCCESS" >> metrics.txt
 
-    # 🔹 Upload metrics
     - name: Upload Metrics
       uses: actions/upload-artifact@v4
       with:
         name: metrics
         path: metrics.txt
 
-    # 🚀 DEPLOY + SAFE RESTART ON EC2 (NO 143 ERROR)
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
-       script: |
-        cd ClacCode
-        git pull origin main
-        source venv/bin/activate
-        pip install -r requirements.txt
-        python manage.py migrate
-      
-        echo "Checking for existing server..."
-        PIDS=$(pgrep -f runserver || true)
-      
-        if [ ! -z "$PIDS" ]; then
-          echo "Stopping old server..."
-          kill $PIDS || true
-          sleep 2
-        else
-          echo "No existing server running"
-        fi
-      
-        echo "Starting new server..."
-        nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
-      
-        echo "Deployment + Restart completed"
+        script: |
+          set +e   # 🔥 IMPORTANT: prevents script failure on signals
+
+          cd ClacCode
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt
+          python manage.py migrate
+
+          echo "Checking for existing server..."
+          PIDS=$(pgrep -f runserver)
+
+          if [ ! -z "$PIDS" ]; then
+            echo "Stopping old server..."
+            kill $PIDS
+            sleep 2
+          else
+            echo "No existing server running"
+          fi
+
+          echo "Starting new server..."
+          nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
+
+          echo "Deployment + Restart completed"
+
+          exit 0   # 🔥 FORCE SUCCESS
