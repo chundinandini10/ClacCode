@@ -69,24 +69,25 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          cd ClacCode
-          git pull origin main
-          source venv/bin/activate
-          pip install -r requirements.txt
-          python manage.py migrate
-
-          echo "Checking for existing server..."
-          PIDS=$(pgrep -f runserver)
-
-          if [ ! -z "$PIDS" ]; then
-            echo "Stopping old server..."
-            kill $PIDS
-          else
-            echo "No existing server running"
-          fi
-
-          echo "Starting new server..."
-          nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
-
-          echo "Deployment + Restart completed"
+       script: |
+        cd ClacCode
+        git pull origin main
+        source venv/bin/activate
+        pip install -r requirements.txt
+        python manage.py migrate
+      
+        echo "Checking for existing server..."
+        PIDS=$(pgrep -f runserver || true)
+      
+        if [ ! -z "$PIDS" ]; then
+          echo "Stopping old server..."
+          kill $PIDS || true
+          sleep 2
+        else
+          echo "No existing server running"
+        fi
+      
+        echo "Starting new server..."
+        nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
+      
+        echo "Deployment + Restart completed"
