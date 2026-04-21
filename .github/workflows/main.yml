@@ -5,29 +5,31 @@ on:
     branches: [ main ]
 
   schedule:
-    - cron: "*/30 * * * *"   # runs every 30 minutes (for experiments)
+    - cron: "*/30 * * * *"   # runs every 30 minutes
 
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
+    # 🔹 Checkout code
     - name: Checkout Code
       uses: actions/checkout@v3
 
+    # 🔹 Setup Python
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'
 
-    #  Cache dependencies
+    # 🔹 Cache dependencies (updated version)
     - name: Cache pip
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
 
-    # 🔥 Measure install time
+    # 🔹 Install dependencies + measure time
     - name: Install Dependencies
       run: |
         START=$(date +%s)
@@ -38,10 +40,11 @@ jobs:
         END=$(date +%s)
         echo "INSTALL_TIME=$((END-START))" >> $GITHUB_ENV
 
+    # 🔹 Run migrations
     - name: Run Migrations
       run: python manage.py migrate
 
-    # 🔥 Measure test time
+    # 🔹 Run tests + measure time
     - name: Run Tests
       run: |
         START=$(date +%s)
@@ -51,7 +54,7 @@ jobs:
         END=$(date +%s)
         echo "TEST_TIME=$((END-START))" >> $GITHUB_ENV
 
-    # 🔥 Save metrics automatically
+    # 🔹 Save metrics
     - name: Save Metrics
       run: |
         echo "Run Time: $(date)" > metrics.txt
@@ -59,13 +62,14 @@ jobs:
         echo "Test Time: $TEST_TIME sec" >> metrics.txt
         echo "Status: SUCCESS" >> metrics.txt
 
+    # 🔹 Upload metrics (FIXED VERSION)
     - name: Upload Metrics
       uses: actions/upload-artifact@v4
       with:
         name: metrics
         path: metrics.txt
 
-    # 🚀 AUTO DEPLOY TO EC2
+    # 🚀 DEPLOY TO EC2 (CLEAN VERSION - NO SERVER START)
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -78,5 +82,4 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt
           python manage.py migrate
-          sudo pkill -f runserver || true
-          nohup python manage.py runserver 0.0.0.0:8000 &
+          echo "Deployment completed successfully"
