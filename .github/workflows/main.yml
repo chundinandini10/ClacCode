@@ -22,8 +22,6 @@ jobs:
       with:
         python-version: '3.12'
 
-    # 🔹 Cache dependencies (updated version)
-
     # 🔹 Install dependencies + measure time
     - name: Install Dependencies
       run: |
@@ -57,14 +55,14 @@ jobs:
         echo "Test Time: $TEST_TIME sec" >> metrics.txt
         echo "Status: SUCCESS" >> metrics.txt
 
-    # 🔹 Upload metrics (FIXED VERSION)
+    # 🔹 Upload metrics
     - name: Upload Metrics
       uses: actions/upload-artifact@v4
       with:
         name: metrics
         path: metrics.txt
 
-    # 🚀 DEPLOY TO EC2 (CLEAN VERSION - NO SERVER START)
+    # 🚀 DEPLOY + RESTART SERVER ON EC2
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -77,4 +75,11 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt
           python manage.py migrate
-          echo "Deployment completed successfully"
+
+          echo "Stopping old server..."
+          pkill -f runserver || true
+
+          echo "Starting new server..."
+          nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
+
+          echo "Deployment + Restart completed"
